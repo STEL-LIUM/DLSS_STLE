@@ -64,14 +64,17 @@ public final class DSConfig {
                             "currently costs a framebuffer resize.")
                     .define("menuBoost", false);
             this.beatSync = builder
-                    .comment("Beat Sync: frames release on a metronome-steady grid",
-                            "at an even divisor of your refresh rate, stepping down",
-                            "only when the GPU cannot hold the pace. THE fix for",
-                            "stutter/flicker on G-Sync/FreeSync panels at any fps,",
-                            "including Unlimited. Stands down automatically under",
-                            "vsync, in menus, unfocused, or when another clock is",
-                            "detected. Off = vanilla frame limiting, untouched.")
-                    .define("beatSync", true);
+                    .comment("OPT-IN. Beat Sync: frames release on a",
+                            "metronome-steady grid at an even divisor of your",
+                            "refresh rate, stepping down only when the GPU cannot",
+                            "hold the pace. Aimed at stutter/flicker on",
+                            "G-Sync/FreeSync panels at any fps, including",
+                            "Unlimited. Stands down automatically under vsync, in",
+                            "menus, unfocused, or when another clock is detected.",
+                            "Off by default: taking over frame delivery is the one",
+                            "thing here a player cannot see going wrong, and a",
+                            "performance mod should not touch it uninvited.")
+                    .define("beatSync", false);
             this.debugDump = builder
                     .comment("Allow the DUMP_BUFFERS marker file to write the",
                             "pipeline's buffers as PNGs (logs/buffers/) - the",

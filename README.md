@@ -19,7 +19,7 @@ resolution with no upscaling**:
 
 1. Install **Minecraft 1.20.1** with **Forge 47.x** (Java 17+).
 2. Download `dlss-style-1.0.0.jar` from the
-   [Releases](https://github.com/geterhun/dlss-style/releases) page.
+   [Releases](https://github.com/STEL-LIUM/DLSS_STLE/releases) page.
 3. Drop it in your `mods` folder.
 
 Nothing else is required. A shader mod is optional — see
@@ -75,7 +75,7 @@ need. The rest lives in `config/dlssstyle-client.toml`.
 | `preset` | `DLAA` | The preset, as above. Also set by Ctrl+U and the button. |
 | `sharpness` | `0.35` | Edge crispness added back after upscaling. Too high looks gritty. |
 | `dynamicTargetFps` | `0` | The fps the Dynamic preset holds. `0` = your fps cap, or the monitor's refresh rate when uncapped. |
-| `beatSync` | `true` | Releases frames on a steady grid at an even divisor of your refresh rate. Aimed at stutter on G-Sync / FreeSync panels. Stands down under vsync, in menus and when unfocused. Set `false` for vanilla frame limiting, untouched. |
+| `beatSync` | `false` | **Opt-in.** Releases frames on a steady grid at an even divisor of your refresh rate. Aimed at stutter on G-Sync / FreeSync panels. Stands down under vsync, in menus and when unfocused. Off by default: frame delivery is the one thing here you cannot see going wrong, so the mod does not take it over uninvited. |
 | `jitter` | `false` | **Experimental.** Sub-pixel camera jitter — more real detail, but it may shimmer. |
 | `menuBoost` | `false` | **Experimental.** Halves the scale while a menu is open. Each open/close currently costs a framebuffer resize. |
 | `debugDump` | `true` | Lets a `DUMP_BUFFERS` marker file write the pipeline's buffers as PNGs to `logs/buffers/`. |
@@ -115,4 +115,4 @@ Drop them in yourself to build the integration classes.
 
 ## License
 
-All rights reserved.
+[MIT](LICENSE).
