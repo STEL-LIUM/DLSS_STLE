@@ -1,0 +1,23 @@
+
+# Dev client working directory - worlds, configs, logs, screenshots
+# Embeddium and Iris integrations. NEVER publish these - they are other
+# Gradle
+# IDE
+# OS
+# Third-party mod jars used only as compile-time references for the
+# people's work and shipping them would be redistribution.
+*.iml
+.DS_Store
+.classpath
+.gradle/
+.idea/
+.project
+.settings/
+.vscode/
+Thumbs.db
+bin/
+build/
+libs/
+out/
+run-data/
+run/

@@ -1,0 +1,35 @@
+{
+    "blend": {
+        "func": "add",
+        "srcrgb": "one",
+        "dstrgb": "zero"
+    },
+    "vertex": "dlssstyle:dlss_upscale",
+    "fragment": "dlssstyle:dlss_upscale",
+    "attributes": [
+        "Position",
+        "UV0"
+    ],
+    "samplers": [
+        { "name": "Sampler0" },
+        { "name": "Sampler1" },
+        { "name": "Sampler2" },
+        { "name": "Sampler3" }
+    ],
+    "uniforms": [
+        { "name": "ModelViewMat", "type": "matrix4x4", "count": 16,
+          "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ProjMat", "type": "matrix4x4", "count": 16,
+          "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "InSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+        { "name": "Sharpness", "type": "float", "count": 1, "values": [ 0.35 ] },
+        { "name": "HistoryBlend", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "KernelBias", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "ReprojMat", "type": "matrix4x4", "count": 16,
+          "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "Jitter", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] },
+        { "name": "HistoryValid", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "ReprojMatSky", "type": "matrix4x4", "count": 16,
+          "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] }
+    ]
+}

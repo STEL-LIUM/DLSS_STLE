@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="dlssstyle"
+version="1.0.0"
+displayName="DLSS Style"
+authors="Scallydragon"
+description='''
+DLSS-style temporal upscaling and anti-aliasing for Minecraft. DLAA by
+default: temporal accumulation with depth-based camera reprojection at
+native resolution - the DLSS mechanism without the neural network, no
+quality sacrificed. Quality / Balanced / Performance presets at DLSS's
+own ratios trade pixels for fps, and Dynamic resolution holds your fps
+target by itself. Preset control in Video Settings (vanilla and
+Embeddium screens), or Ctrl+U in game.
+'''
+
+[[dependencies.dlssstyle]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.dlssstyle]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="CLIENT"
+
+# The Iris hooks live in their own config, declared optional: an install
+# with no shader mod never loads them, and a future Iris that moves these
+# methods costs the shadow cache, not the game.
+[[mixins]]
+config="dlssstyle.mixins.json"
+
+[[mixins]]
+config="dlssstyle.iris.mixins.json"

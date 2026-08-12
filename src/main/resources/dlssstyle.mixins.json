@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.dlssstyle.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "dlssstyle.refmap.json",
+  "minVersion": "0.8",
+  "client": [
+    "MixinFramerateCeiling",
+    "MixinGameRendererScale",
+    "MixinMinecraftMainTarget",
+    "MixinLevelRendererScale"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
