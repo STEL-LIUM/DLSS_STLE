@@ -113,6 +113,16 @@ buffers as PNGs to `logs/buffers/`. Attach those to the issue.
 compile-time references belong to their authors and are not redistributed here.
 Drop them in yourself to build the integration classes.
 
+## Contributing
+
+Bug reports, performance reports and feature ideas all have
+[templates](https://github.com/STEL-LIUM/DLSS_STLE/issues/new/choose) that ask
+for what actually gets a report solved. [CONTRIBUTING.md](CONTRIBUTING.md)
+covers building, what a performance PR needs to include, and the two things in
+this codebase that break most often. Security issues go
+[here](SECURITY.md), privately. Everyone is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
 [MIT](LICENSE).

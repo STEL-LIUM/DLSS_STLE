@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest something the mod should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What it should do, in a sentence or two.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What it would fix or improve
+      description: |
+        The interesting part. Ideas that stand a chance either remove work whose
+        inputs have not changed, or let the player see something they cannot see
+        today.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which part of the mod
+      options:
+        - Upscaling / DLAA / reconstruction
+        - Shadow or sky caching (shader packs)
+        - Presets and controls
+        - Compatibility with another mod
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: prior
+    attributes:
+      label: Seen it done elsewhere?
+      description: A mod, an engine, or a paper that does this already. Link it — it saves a lot of guessing.
+    validations:
+      required: false

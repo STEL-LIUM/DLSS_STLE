@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or conduct report
+    url: https://github.com/STEL-LIUM/DLSS_STLE/security/advisories/new
+    about: Please report vulnerabilities and conduct concerns privately, not as a public issue.
+  - name: Question about installing or configuring
+    url: https://github.com/STEL-LIUM/DLSS_STLE/discussions
+    about: Ask here first — the README's Configuration and Troubleshooting sections cover most of it.

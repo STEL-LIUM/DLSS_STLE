@@ -1,0 +1,107 @@
+name: Bug report
+description: Something renders wrong, crashes, or does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: try it with **only** DLSS Style, Forge, and your shader
+        mod installed. Most rendering reports turn out to be a conflict, and
+        knowing which one saves everybody a week.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you see, and what you expected instead.
+      placeholder: The sky flickers black every few seconds when I turn the camera.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce it
+      description: Steps from a fresh launch. Say if it is intermittent.
+      placeholder: |
+        1. Load a superflat world at noon
+        2. Set the preset to Balanced
+        3. Turn the camera left and right
+    validations:
+      required: true
+
+  - type: dropdown
+    id: preset
+    attributes:
+      label: Preset
+      options:
+        - DLAA
+        - Quality
+        - Balanced
+        - Performance
+        - Dynamic
+        - Off
+        - Happens on all of them
+    validations:
+      required: true
+
+  - type: dropdown
+    id: window
+    attributes:
+      label: Windowed or fullscreen
+      description: This one matters more than it looks — several past bugs appeared in only one of the two.
+      options:
+        - Fullscreen
+        - Windowed
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: DLSS Style, Minecraft, Forge, and Java.
+      placeholder: DLSS Style 1.0.0, MC 1.20.1, Forge 47.4.10, Java 17
+    validations:
+      required: true
+
+  - type: input
+    id: shaders
+    attributes:
+      label: Shader mod and pack
+      description: Iris/Oculus/Mekalus version, and the pack with its version. Write "none" if you run without.
+      placeholder: Oculus 1.6.9, BSL Classic v8.4
+    validations:
+      required: true
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: Embeddium/Rubidium and anything else that touches rendering. A full list is fine.
+      placeholder: Embeddium 0.3.31, Oculus 1.6.9
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and resolution
+      placeholder: RTX 3080 Ti, 1920x1080
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log
+      description: |
+        Attach `logs/latest.log` — drag the file in, do not paste it.
+
+        If it is a **visual** bug, also attach the buffer dump: create an empty
+        file named `DUMP_BUFFERS` in your `.minecraft` folder, reproduce the bug,
+        then attach the PNGs from `logs/buffers/`. That is how nearly every bug
+        in this mod has been found.
+    validations:
+      required: false

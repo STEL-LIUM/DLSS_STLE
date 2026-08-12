@@ -1,0 +1,68 @@
+name: Performance report
+description: It is slower than expected, or you measured something worth knowing
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The mod's whole claim is a number, so a report about that claim needs
+        numbers too. Measure standing **still**, in the **same spot**, at the
+        **same time of day**, with the same shader pack — position is worth more
+        fps than most optimisations, and a single F3 glance taken while walking
+        is noise.
+
+  - type: textarea
+    id: numbers
+    attributes:
+      label: The measurement
+      description: fps and frame time, mod off and mod on. Frame time is the honest one.
+      value: |
+        | | fps | frame time |
+        |---|---|---|
+        | Preset: Off |  |  |
+        | Preset: DLAA |  |  |
+        | Preset: Balanced |  |  |
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: Where you measured
+      description: World type, coordinates, time of day, render distance.
+      placeholder: Superflat, spawn, noon, RD 12
+    validations:
+      required: true
+
+  - type: input
+    id: shaders
+    attributes:
+      label: Shader mod and pack
+      description: Without a shader mod the shadow and sky caching do not run at all, which is often the whole answer.
+      placeholder: Oculus 1.6.9, BSL Classic v8.4 — or "none"
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: GPU, CPU and resolution
+      placeholder: RTX 3080 Ti, Ryzen 7 5800X, 1920x1080
+    validations:
+      required: true
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      placeholder: Embeddium 0.3.31, Oculus 1.6.9
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Stutter rather than low average? Say so — and say whether your monitor is G-Sync/FreeSync, and whether vsync is on.
+    validations:
+      required: false
