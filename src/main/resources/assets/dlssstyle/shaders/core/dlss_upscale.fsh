@@ -141,14 +141,27 @@ void main() {
     // animated water normals) physically cannot dominate the kernel,
     // whatever its brightness. The clamp feeds ONLY the accumulator: the
     // clip box and the sharpen mean still see the true distribution.
-    float meanY = m1.x / max(bw, 1.0e-4);
-    float sigmaY = sqrt(max(m2.x / max(bw, 1.0e-4) - meanY * meanY, 0.0));
-    // 2.0 sigma, and it stays there. Tightening to 1.5 was field-tested and
-    // made sunlit glass WORSE: the clamp then bites every frame and its bite
-    // depth moves with the neighbourhood stats, so the threshold itself
-    // becomes a flickering brightness modulator. 2-sigma is the proven edge:
-    // stable bright pixels pass strictly; only true outliers are pulled in.
-    float yClampMax = meanY + 2.0 * sigmaY + 0.02;
+    // 1.2.1: SPATIAL-PATH-ONLY (HistoryBlend == 0, i.e. shader packs).
+    // The temporal path already bounds outliers three ways - Reinhard
+    // accumulation space, the deringing box on `current`, and the
+    // variance-clipped 0.75..0.97 history blend that averages any
+    // one-frame outlier 4:1 or better - and the field-verified DLAA
+    // shadow fixes (sigma floor, Karis weights, blend boost) predate this
+    // clamp and do not depend on it. The branch is on a uniform, so the
+    // whole draw takes one predicated path; min(y, 1e9) is an identity
+    // when temporal.
+    float yClampMax = 1.0e9;
+    if (HistoryBlend <= 0.0) {
+        float meanY = m1.x / max(bw, 1.0e-4);
+        float sigmaY = sqrt(max(m2.x / max(bw, 1.0e-4) - meanY * meanY, 0.0));
+        // 2.0 sigma, and it stays there. Tightening to 1.5 was field-tested
+        // and made sunlit glass WORSE: the clamp then bites every frame and
+        // its bite depth moves with the neighbourhood stats, so the
+        // threshold itself becomes a flickering brightness modulator.
+        // 2-sigma is the proven edge: stable bright pixels pass strictly;
+        // only true outliers are pulled in.
+        yClampMax = meanY + 2.0 * sigmaY + 0.02;
+    }
     // Karis anti-flicker weighting: damp each tap by 1/(1+k*Y) so a bright
     // outlier cannot seesaw the average against its dark neighbours as the
     // jitter phase moves it in and out of the kernel - the classic TAA
@@ -183,11 +196,14 @@ void main() {
     // mean +/- 2 sigma (+0.01 headroom). A stable chromatic edge raises
     // its own local mean and sigma enough to pass (same maths as luma);
     // a lone SSR sparkle seen through red glass does not.
-    vec2 meanC = m1.yz / max(bw, 1.0e-4);
-    vec2 sigmaC = sqrt(max(m2.yz / max(bw, 1.0e-4) - meanC * meanC, vec2(0.0)));
-    chroma.yz = clamp(chroma.yz,
-                      meanC - 2.0 * sigmaC - 0.01,
-                      meanC + 2.0 * sigmaC + 0.01);
+    // 1.2.1: spatial-path-only, same argument as the luma clamp above.
+    if (HistoryBlend <= 0.0) {
+        vec2 meanC = m1.yz / max(bw, 1.0e-4);
+        vec2 sigmaC = sqrt(max(m2.yz / max(bw, 1.0e-4) - meanC * meanC, vec2(0.0)));
+        chroma.yz = clamp(chroma.yz,
+                          meanC - 2.0 * sigmaC - 0.01,
+                          meanC + 2.0 * sigmaC + 0.01);
+    }
     vec3 current = vec3(accY.x / max(accY.y, 1.0e-4), chroma.yz);
     current = clamp(current, boxMin, boxMax);   // deringing
     // Confidence stays the RAW kernel coverage: the Karis-weighted sum would

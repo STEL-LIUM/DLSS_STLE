@@ -119,6 +119,23 @@ public final class DSRenderScale {
         packSessionEngaged = null;
     }
 
+    /**
+     * True when the latched pack session no longer matches what the given
+     * preset needs - the state that used to demand the manual "set a
+     * scaling preset then reload the pack" dance (which cost a whole night
+     * of testing a disengaged mod on 2026-08-12).
+     */
+    public static boolean packReloadNeeded(DSPreset preset) {
+        if (!shaderPackActive() || packSessionEngaged == null) {
+            return false;
+        }
+        boolean wantsScaling = preset == DSPreset.QUALITY
+                || preset == DSPreset.BALANCED
+                || preset == DSPreset.PERFORMANCE
+                || preset == DSPreset.DYNAMIC;
+        return packSessionEngaged != wantsScaling;
+    }
+
     /** The scale the current frame actually rendered at. */
     public static double currentScale() {
         if (target == null || lastWidth == 0) {

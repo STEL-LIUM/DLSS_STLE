@@ -150,6 +150,29 @@ public final class DSConfig {
         presetCache = preset;
         DSRenderScale.onPresetChanged(preset);
         DLSSStyle.LOGGER.info("Preset: {}", preset.label());
+        // The engagement latch is per pack-session: crossing between a
+        // scaling and a non-scaling preset while a pack is active used to
+        // require a manual pack reload (the #1 footgun - it cost a whole
+        // night of testing a disengaged mod). Reload programmatically via
+        // the stable Iris v0 API; if this build's shader mod lacks the
+        // method, say the exact remaining manual step instead.
+        if (DSRenderScale.packReloadNeeded(preset)) {
+            DSRenderScale.resetShaderSession();
+            boolean reloaded =
+                    com.dlssstyle.compat.DSIrisIntegration.reloadShaderPack();
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.level != null && minecraft.gui != null) {
+                minecraft.gui.getChat().addMessage(
+                        net.minecraft.network.chat.Component.literal("DLSS Style: ")
+                                .append(net.minecraft.network.chat.Component.literal(
+                                        reloaded
+                                        ? "shader pack reloaded for " + preset.label()
+                                        : "to finish switching to " + preset.label()
+                                          + ", open Video Settings > Shader Packs"
+                                          + " and click Apply")
+                                .withStyle(net.minecraft.ChatFormatting.AQUA)));
+            }
+        }
     }
 
     /** Read per frame by the scale pass. */

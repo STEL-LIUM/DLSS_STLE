@@ -97,7 +97,9 @@ public final class DSPackDoctor {
             // Idempotent: a _fixed at least as new as its source stands.
             if (Files.exists(fixed) && Files.getLastModifiedTime(fixed)
                     .compareTo(Files.getLastModifiedTime(zip)) >= 0) {
-                DLSSStyle.LOGGER.info(
+                // Debug, not info: per-boot "already fixed" notices are noise
+                // once the heal has happened. Actual heals stay INFO.
+                DLSSStyle.LOGGER.debug(
                         "Pack doctor: {} references missing variables {} - fixed copy"
                         + " already present ({})", name, afflictedKeys,
                         fixed.getFileName());

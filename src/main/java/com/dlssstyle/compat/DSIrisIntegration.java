@@ -63,6 +63,42 @@ public final class DSIrisIntegration {
         }
     }
 
+    /**
+     * Programmatic shader-pack reload through the STABLE v0 API - no
+     * internals touched. IrisApi.getConfig() hands back IrisApiConfig,
+     * whose setShadersEnabledAndApply(...) is implemented as a config save
+     * plus a full pipeline reload; re-applying the CURRENT enabled state is
+     * therefore exactly the "toggle the pack" dance, in one call. Verified
+     * present in this environment's shader mod (Mekalus 1.8.0.1, method
+     * table read from the jar). Returns false when unavailable so the
+     * caller can fall back to telling the player the manual step.
+     */
+    public static boolean reloadShaderPack() {
+        if (!probed) {
+            probe();
+        }
+        if (api == null) {
+            return false;
+        }
+        try {
+            Object config = api.getClass().getMethod("getConfig").invoke(api);
+            boolean enabled = (Boolean) config.getClass()
+                    .getMethod("areShadersEnabled").invoke(config);
+            if (!enabled) {
+                return false;   // nothing to reload; engagement is moot
+            }
+            config.getClass().getMethod("setShadersEnabledAndApply", boolean.class)
+                    .invoke(config, true);
+            DLSSStyle.LOGGER.info("Shader pack reloaded programmatically"
+                    + " (preset change re-latches the scaling session)");
+            return true;
+        } catch (Throwable t) {
+            DLSSStyle.LOGGER.warn("Programmatic shader reload unavailable: {}",
+                    t.toString());
+            return false;
+        }
+    }
+
     private static void probe() {
         probed = true;
         // Both API homes: current Iris/Oculus/Mekalus use the irisshaders

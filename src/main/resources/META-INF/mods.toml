@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
 modId="dlssstyle"
-version="1.2.0"
+version="1.2.1"
 displayName="DLSS Style"
 logoFile="logo.png"
 authors="Scallydragon"
