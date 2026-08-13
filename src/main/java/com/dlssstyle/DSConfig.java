@@ -30,6 +30,8 @@ public final class DSConfig {
         final ForgeConfigSpec.BooleanValue debugDump;
         final ForgeConfigSpec.BooleanValue packDoctorEnabled;
         final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> packDoctorMissingVars;
+        final ForgeConfigSpec.BooleanValue packDoctorAuto;
+        final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> packDoctorKnownVars;
 
         Client(ForgeConfigSpec.Builder builder) {
             builder.comment("DLSS Style - DLSS-style temporal upscaling.",
@@ -38,8 +40,9 @@ public final class DSConfig {
                     "depth-based camera reprojection.").push("upscale");
             this.preset = builder
                     .comment("OFF: native, nothing runs.",
-                            "QUALITY / BALANCED / PERFORMANCE: DLSS's own scale",
-                            "ratios (67% / 58% / 50% per axis) - fps for pixels.",
+                            "QUALITY / BALANCED / PERFORMANCE / ULTRA_PERFORMANCE:",
+                            "DLSS's own scale ratios (67% / 58% / 50% / 33% per",
+                            "axis) - fps for pixels.",
                             "DLAA: native res, the temporal pass as pure",
                             "anti-aliasing - no quality sacrificed. The default.",
                             "DYNAMIC: scale adjusts itself to hold your fps cap or",
@@ -103,6 +106,21 @@ public final class DSConfig {
                             "a pack update leans on a newer Iris variable.")
                     .defineList("packDoctorMissingVars",
                             java.util.List.of("endFlashIntensity", "BIOME_PALE_GARDEN"),
+                            entry -> entry instanceof String s && !s.isBlank());
+            this.packDoctorAuto = builder
+                    .comment("Pack doctor auto-discovery: instead of only the fixed",
+                            "list above, parse every expression and flag ANY",
+                            "identifier the installed shader mod does not provide",
+                            "(checked against the documented Iris 1.6 variable set",
+                            "plus this Minecraft version's real biome registry).",
+                            "This is how a future pack update leaning on a newer",
+                            "Iris variable gets healed with zero config changes.")
+                    .define("packDoctorAuto", true);
+            this.packDoctorKnownVars = builder
+                    .comment("Escape hatch for auto-discovery false positives:",
+                            "identifiers listed here are always treated as provided",
+                            "and never cause a line to be neutralised.")
+                    .defineList("packDoctorKnownVars", java.util.List.of(),
                             entry -> entry instanceof String s && !s.isBlank());
             builder.pop();
         }
@@ -297,6 +315,22 @@ public final class DSConfig {
             return java.util.List.copyOf(CLIENT.packDoctorMissingVars.get());
         } catch (IllegalStateException e) {
             return java.util.List.of("endFlashIntensity", "BIOME_PALE_GARDEN");
+        }
+    }
+
+    public static boolean packDoctorAuto() {
+        try {
+            return CLIENT.packDoctorAuto.get();
+        } catch (IllegalStateException e) {
+            return true;
+        }
+    }
+
+    public static java.util.List<String> packDoctorKnownVars() {
+        try {
+            return java.util.List.copyOf(CLIENT.packDoctorKnownVars.get());
+        } catch (IllegalStateException e) {
+            return java.util.List.of();
         }
     }
 }

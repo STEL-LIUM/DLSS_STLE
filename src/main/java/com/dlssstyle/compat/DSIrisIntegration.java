@@ -99,6 +99,26 @@ public final class DSIrisIntegration {
         }
     }
 
+    /**
+     * The active pack's name for the join banner, or null when there is no
+     * shader mod, no pack, or the internal method moved. Internals (not the
+     * v0 API, which never exposed the name) - so this is best-effort by
+     * design and a null simply drops the name from the banner.
+     */
+    public static String shaderPackName() {
+        for (String className : new String[]{
+                "net.irisshaders.iris.Iris", "net.coderbot.iris.Iris"}) {
+            try {
+                Object name = Class.forName(className)
+                        .getMethod("getCurrentPackName").invoke(null);
+                return name == null ? null : name.toString();
+            } catch (Throwable ignored) {
+                // Try the next home.
+            }
+        }
+        return null;
+    }
+
     private static void probe() {
         probed = true;
         // Both API homes: current Iris/Oculus/Mekalus use the irisshaders

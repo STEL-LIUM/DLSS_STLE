@@ -19,11 +19,21 @@ public enum DSPreset {
     /** DLSS Balanced ratio - 0.58 per axis, 34% of the pixels. */
     BALANCED("Balanced", 0.58),
     /**
-     * DLSS Performance ratio - 1/2 per axis, 25% of the pixels. The floor:
-     * anything below sacrificed more image than Aryan was willing to trade
-     * (Ultra Performance at 1/3 was cut 2026-08-11 on his call).
+     * DLSS Performance ratio - 1/2 per axis, 25% of the pixels. Was the
+     * floor after Ultra Performance was cut 2026-08-11 as too soft; the
+     * cut was reversed 2026-08-13 on the same call - measured on a
+     * raytraced pack the GPU sat at 80%/340W and pixels are the only
+     * remaining lever, so the 1/3 rung returned as the emergency setting.
      */
     PERFORMANCE("Performance", 0.50),
+    /**
+     * DLSS Ultra Performance ratio - 1/3 per axis, 11% of the pixels.
+     * The emergency lever for pack-heavy scenes; the resolve raises its
+     * sharpening as scale drops (DSRenderScale.effectiveSharpness), which
+     * is what keeps this rung usable at all. Label stays short: the
+     * Video Settings cycle button is 160px wide.
+     */
+    ULTRA_PERFORMANCE("Ultra Perf", 1.0 / 3.0),
     /**
      * Native resolution through the temporal pass - no fps gain, the
      * accumulation becomes pure anti-aliasing (DLAA's trick).
@@ -55,5 +65,16 @@ public enum DSPreset {
 
     public boolean enabled() {
         return this != OFF;
+    }
+
+    /**
+     * Whether this preset reduces pixels under a shader pack - the single
+     * definition the engagement latch and the reload-needed check both
+     * read, so a new rung on the ladder can never be added to one list
+     * and forgotten in the other (Ultra Performance nearly was).
+     */
+    public boolean scalesUnderPack() {
+        return this == QUALITY || this == BALANCED || this == PERFORMANCE
+                || this == ULTRA_PERFORMANCE || this == DYNAMIC;
     }
 }

@@ -21,12 +21,75 @@ public final class DSClientEvents {
     private DSClientEvents() {
     }
 
+    /**
+     * Frames until the join banner fires; armed at login, counted down in
+     * the render stage. The delay is load-bearing twice over: the pack
+     * engagement latch decides on the first scaled frame, and chat sent at
+     * the login instant lands before the HUD exists.
+     */
+    private static int bannerFrames;
+
+    @SubscribeEvent
+    public static void onLoggingIn(
+            net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn event) {
+        bannerFrames = 40;
+    }
+
+    /**
+     * One line of state at world join: preset, real render scale, pack and
+     * whether scaling is actually engaged. The disengaged-mod footgun cost
+     * a whole night of testing on 2026-08-12 precisely because nothing on
+     * screen ever said what the mod was doing; this says it, once.
+     */
+    private static void joinBanner() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.gui == null) {
+            return;
+        }
+        DSPreset preset = DSConfig.preset();
+        StringBuilder text = new StringBuilder(preset.label());
+        if (!preset.enabled()) {
+            text.append(" - native, nothing runs");
+        } else {
+            boolean pack = DSRenderScale.shaderPackActive();
+            boolean engaged = DSRenderScale.isActive();
+            if (engaged) {
+                // Config scale, not currentScale(): this runs mid-world-pass
+                // with the proxy armed, where getMainRenderTarget() IS the
+                // scaled target and currentScale() would read 100%.
+                text.append(" - world at ").append(
+                        (int) Math.round(DSConfig.effectiveRenderScale() * 100.0))
+                        .append('%');
+            } else {
+                text.append(" - native");
+            }
+            if (pack) {
+                String name = com.dlssstyle.compat.DSIrisIntegration.shaderPackName();
+                text.append(", pack ").append(name == null ? "on" : name);
+                if (!engaged) {
+                    text.append(preset.scalesUnderPack()
+                            ? " - NOT engaged, switch preset once to re-latch"
+                            : " - pass-through by design");
+                }
+            } else if (engaged) {
+                text.append(", temporal path");
+            }
+        }
+        DLSSStyle.LOGGER.info("Join banner: {}", text);
+        minecraft.gui.getChat().addMessage(Component.literal("DLSS Style: ")
+                .append(Component.literal(text.toString())
+                        .withStyle(ChatFormatting.AQUA)));
+    }
+
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) {
             // One line, a no-op after it fires once: the pack doctor's chat
             // hint needs an in-game moment, and this event proves one.
             DSPackDoctor.maybeAnnounce();
+            if (bannerFrames > 0 && --bannerFrames == 0) {
+                joinBanner();
+            }
             // The temporal upscaler's reprojection needs this frame's
             // camera matrices; captured here where pose + projection are
             // both in hand. The pose carries ROTATION ONLY, so the camera

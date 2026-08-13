@@ -62,9 +62,9 @@ public final class DSEmbeddiumIntegration {
                 .setTooltip(Component.literal(
                         "DLSS-style temporal upscaling. DLAA (default): native res, "
                         + "pure anti-aliasing - no quality lost. Quality 67% / "
-                        + "Balanced 58% / Performance 50% per axis (DLSS's own ratios) "
-                        + "trade pixels for fps. Dynamic: holds your fps target by "
-                        + "itself. Applies instantly."))
+                        + "Balanced 58% / Performance 50% / Ultra Perf 33% per axis "
+                        + "(DLSS's own ratios) trade pixels for fps. Dynamic: holds "
+                        + "your fps target by itself. Applies instantly."))
                 .setControl(option -> new CyclingControl<>(option, DSPreset.class, names))
                 .setBinding((data, value) -> DSConfig.setPreset(value),
                         data -> DSConfig.preset())

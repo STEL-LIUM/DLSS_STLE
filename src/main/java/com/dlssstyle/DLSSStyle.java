@@ -71,20 +71,16 @@ public final class DLSSStyle {
         try {
             java.nio.file.Path path = net.minecraftforge.fml.loading.FMLPaths.CONFIGDIR.get()
                     .resolve(MODID + "-client.toml");
-            // "beatSync" marks the current layout (BUMP THIS on every key
-            // change or the corrections come back). A file containing a
-            // RETIRED key (gsyncMode, briefly a toggle before frame pacing
-            // was redesigned) gets rewritten too - Forge warns on unknown
-            // keys just as it does on missing ones.
-            String body = java.nio.file.Files.exists(path)
-                    ? java.nio.file.Files.readString(path) : "";
-            if (body.contains("beatSync") && !body.contains("gsyncMode")) {
+            // FRESH INSTALLS ONLY. An earlier version also rewrote existing
+            // files that predated a layout change - which silently reset the
+            // player's preset to DLAA on upgrade (and its marker key was
+            // never bumped for the 1.2.0 doctor keys anyway, so upgrades got
+            // the WARN noise regardless). An existing file now always
+            // stands; Forge appends any keys it is missing, noisily but
+            // once, and the player's choices survive.
+            if (java.nio.file.Files.exists(path)) {
                 return;
             }
-            // beatSync=false: the spec says OPT-IN and the setting is
-            // currently inert (no consumer since the pacer was withdrawn),
-            // but this template was stamping TRUE into every fresh install -
-            // a booby trap for any future build that wires it back up.
             java.nio.file.Files.writeString(path, """
                     [upscale]
                     \tpreset = "DLAA"
@@ -95,6 +91,10 @@ public final class DLSSStyle {
                     \tmenuBoost = false
                     \tbeatSync = false
                     \tdebugDump = true
+                    \tpackDoctorEnabled = true
+                    \tpackDoctorMissingVars = ["endFlashIntensity", "BIOME_PALE_GARDEN"]
+                    \tpackDoctorAuto = true
+                    \tpackDoctorKnownVars = []
                     """);
         } catch (Exception e) {
             // Worst case Forge corrects the file itself, just noisily.

@@ -84,10 +84,7 @@ public final class DSRenderScale {
             // pixels saved, which measurably COST fps. Only engage when the
             // preset actually reduces pixels.
             if (packSessionEngaged == null) {
-                packSessionEngaged = preset == DSPreset.QUALITY
-                        || preset == DSPreset.BALANCED
-                        || preset == DSPreset.PERFORMANCE
-                        || preset == DSPreset.DYNAMIC;
+                packSessionEngaged = preset.scalesUnderPack();
                 DLSSStyle.LOGGER.info("Shader session: {} (set a scaling preset then"
                         + " reload the pack to change this)",
                         packSessionEngaged ? "scaling engaged" : "not engaged");
@@ -129,11 +126,7 @@ public final class DSRenderScale {
         if (!shaderPackActive() || packSessionEngaged == null) {
             return false;
         }
-        boolean wantsScaling = preset == DSPreset.QUALITY
-                || preset == DSPreset.BALANCED
-                || preset == DSPreset.PERFORMANCE
-                || preset == DSPreset.DYNAMIC;
-        return packSessionEngaged != wantsScaling;
+        return packSessionEngaged != preset.scalesUnderPack();
     }
 
     /** The scale the current frame actually rendered at. */
