@@ -397,7 +397,7 @@ public final class DSRenderScale {
             boolean temporal = !shaderPackActive();
 
             if (DSUpscaleShader.isAvailable()) {
-                RenderTarget history = temporal ? ensureHistory(main) : null;
+                RenderTarget history = temporal ? ensureHistory() : null;
 
                 // Screen and history bound together: the resolve writes both
                 // in ONE pass. The old path drew to the screen and then
@@ -626,17 +626,34 @@ public final class DSRenderScale {
 
     private static TextureTarget history;
 
-    /** Full-resolution buffer holding the last resolved frame. */
-    private static RenderTarget ensureHistory(RenderTarget main) {
+    /**
+     * Buffer holding the last resolved frame - at RENDER scale, not display
+     * scale. The resolve samples it through normalized UVs with LINEAR
+     * filtering, so the shader needs no change; what the smaller buffer
+     * costs is history detail above the render resolution, what it buys is
+     * the largest single VRAM saving in the mod (at Performance, a quarter
+     * of the display-sized allocation) plus a 4x cheaper per-frame history
+     * copy. Trade-off accepted deliberately: the clip box is built from the
+     * render-scale neighbourhood anyway, so the history was never able to
+     * KEEP super-resolution detail the clip did not endorse each frame.
+     *
+     * <p>Sized from {@code target}, so a Dynamic scale step resizes it and
+     * invalidates history - which the resolve already handles (HistoryValid
+     * = 0 falls back to the spatial path for one frame). The scale-step
+     * hysteresis in DSDynamicScale keeps those events rare.
+     */
+    private static RenderTarget ensureHistory() {
+        int width = target.width;
+        int height = target.height;
         try {
             if (history == null) {
-                history = new TextureTarget(main.width, main.height, false, Minecraft.ON_OSX);
+                history = new TextureTarget(width, height, false, Minecraft.ON_OSX);
                 history.setFilterMode(GL11.GL_LINEAR);
                 // A fresh target is cleared to WHITE by vanilla; blending
                 // against it washes the world out for several frames.
                 invalidateHistory();
-            } else if (history.width != main.width || history.height != main.height) {
-                history.resize(main.width, main.height, Minecraft.ON_OSX);
+            } else if (history.width != width || history.height != height) {
+                history.resize(width, height, Minecraft.ON_OSX);
                 history.setFilterMode(GL11.GL_LINEAR);
                 invalidateHistory();
             }
@@ -673,6 +690,14 @@ public final class DSRenderScale {
 
     private static boolean bindDual(RenderTarget main, RenderTarget history) {
         if (!DUAL_FBO_ENABLED || dualBroken) {
+            return false;
+        }
+        // The dual pass writes both attachments through ONE viewport and one
+        // set of UVs, so it structurally requires same-sized attachments.
+        // The history now lives at render scale, so this path also needs a
+        // separate downscale before it could come back - one more reason it
+        // stays withdrawn.
+        if (history.width != main.width || history.height != main.height) {
             return false;
         }
         try {
@@ -734,8 +759,13 @@ public final class DSRenderScale {
     private static void copyInto(RenderTarget from, RenderTarget to) {
         GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, from.frameBufferId);
         GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, to.frameBufferId);
+        // LINEAR, not NEAREST: with the history at render scale this blit
+        // DOWNSAMPLES the resolved frame, and a point-sampled downscale
+        // drops pixels (aliasing that the temporal blend then flickers).
+        // For the same-size case LINEAR lands on texel centres and is
+        // identical to NEAREST, so one filter serves both.
         GL30.glBlitFramebuffer(0, 0, from.width, from.height, 0, 0, to.width, to.height,
-                GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+                GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
     }
 
     /**

@@ -93,7 +93,14 @@ void main() {
     ivec2 base = ivec2(floor(pOut + jitterPx)); // where it landed in the jittered image
     ivec2 maxTexel = ivec2(InSize) - 1;
 
-    vec4 acc = vec4(0.0);                       // rgb*w, w
+    vec2 accY = vec2(0.0);                      // Karis-weighted luma*w, w (chroma is half-rate, below)
+    float wSum = 0.0;                           // raw Lanczos weight sum, for confidence
+    // ONE fetch pass, two ALU loops: each tap's luma and Lanczos weight are
+    // held in registers so the firefly clamp below can use the FULL 3x3
+    // luma statistics before anything accumulates. Indexing is the constant
+    // (y+1)*3+(x+1), so the unrolled loop never spills to scratch memory.
+    float tapY[9];
+    float tapW[9];
     vec3 m1 = vec3(0.0);
     vec3 m2 = vec3(0.0);
     float bw = 0.0;
@@ -115,7 +122,9 @@ void main() {
             vec2 db = d * KernelBias;
             float w = lanczos2ApproxSq(dot(db, db));
             w *= float(abs(w) > 1.0e-3);        // negative-lobe guard
-            acc += vec4(c * w, w);
+            tapY[(y + 1) * 3 + (x + 1)] = c.x;
+            tapW[(y + 1) * 3 + (x + 1)] = w;
+            wSum += w;
 
             float bwi = exp(-2.0 * dot(d, d));  // rectification weight
             m1 += c * bwi;
@@ -126,9 +135,64 @@ void main() {
         }
     }
 
-    vec3 current = acc.rgb / max(acc.w, 1.0e-4);
+    // FIREFLY CLAMP, then the Karis-weighted accumulation - now that the
+    // 3x3 statistics exist. Each tap's luma is clamped to mean + 2 sigma
+    // (+0.02 absolute headroom), so a single sparkle pixel (pack SSR,
+    // animated water normals) physically cannot dominate the kernel,
+    // whatever its brightness. The clamp feeds ONLY the accumulator: the
+    // clip box and the sharpen mean still see the true distribution.
+    float meanY = m1.x / max(bw, 1.0e-4);
+    float sigmaY = sqrt(max(m2.x / max(bw, 1.0e-4) - meanY * meanY, 0.0));
+    // 2.0 sigma, and it stays there. Tightening to 1.5 was field-tested and
+    // made sunlit glass WORSE: the clamp then bites every frame and its bite
+    // depth moves with the neighbourhood stats, so the threshold itself
+    // becomes a flickering brightness modulator. 2-sigma is the proven edge:
+    // stable bright pixels pass strictly; only true outliers are pulled in.
+    float yClampMax = meanY + 2.0 * sigmaY + 0.02;
+    // Karis anti-flicker weighting: damp each tap by 1/(1+k*Y) so a bright
+    // outlier cannot seesaw the average against its dark neighbours as the
+    // jitter phase moves it in and out of the kernel - the classic TAA
+    // shadow-edge flicker. The division by the identically-weighted sum
+    // inverts the weighting, so flat regions come through untouched.
+    // Spatial-only frames (HistoryBlend == 0: shader packs) get a 3x
+    // harder curve: with no history to average sparkle over TIME, it has
+    // to be tamed in SPACE. The temporal path keeps the shipped weighting.
+    float karisScale = (HistoryBlend > 0.0) ? 1.0 : 3.0;
+    for (int i = 0; i < 9; ++i) {
+        float yTap = min(tapY[i], yClampMax);
+        float karis = 1.0 / (1.0 + karisScale * yTap);
+        accY += vec2(yTap * tapW[i] * karis, tapW[i] * karis);
+    }
+
+    // HALF-RATE CHROMA. Only LUMA earns the jitter-aware Lanczos
+    // reconstruction: the eye's chroma acuity is a fraction of its luma
+    // acuity (the same asymmetry 4:2:0 video is built on), so Co/Cg take
+    // one bilinear tap at this pixel's position in the jittered image.
+    // Yes, that is a coordinate-offset resample - the exact filter the
+    // header forbids for the image as a whole - applied deliberately where
+    // its low-pass cost is invisible. Chroma still passes through the
+    // neighbourhood clamp and the variance clip, so it cannot ring or
+    // ghost past what the 3x3 stats endorse.
+    vec3 chroma = rgb2ycocg(tonemap(texture(Sampler0, texCoord + Jitter).rgb));
+    // CHROMA FIREFLY CLAMP (stained glass under packs): the deringing box
+    // below cannot catch a TINTED sparkle - the sparkle texel is IN the
+    // 3x3, so the box is built around it, and the bilinear chroma tap is
+    // a convex combination of in-window texels that could never leave the
+    // box anyway. Bound the tap against the neighbourhood's chroma
+    // STATISTICS instead, the exact analog of the luma clamp above:
+    // mean +/- 2 sigma (+0.01 headroom). A stable chromatic edge raises
+    // its own local mean and sigma enough to pass (same maths as luma);
+    // a lone SSR sparkle seen through red glass does not.
+    vec2 meanC = m1.yz / max(bw, 1.0e-4);
+    vec2 sigmaC = sqrt(max(m2.yz / max(bw, 1.0e-4) - meanC * meanC, vec2(0.0)));
+    chroma.yz = clamp(chroma.yz,
+                      meanC - 2.0 * sigmaC - 0.01,
+                      meanC + 2.0 * sigmaC + 0.01);
+    vec3 current = vec3(accY.x / max(accY.y, 1.0e-4), chroma.yz);
     current = clamp(current, boxMin, boxMax);   // deringing
-    float sampleConfidence = clamp(acc.w, 0.0, 1.0);
+    // Confidence stays the RAW kernel coverage: the Karis-weighted sum would
+    // read bright pixels as low coverage and over-blend history there.
+    float sampleConfidence = clamp(wSum, 0.0, 1.0);
 
     vec3 resolved = current;
 
@@ -162,7 +226,27 @@ void main() {
             // instead of being clipped away every frame.
             vec3 mean = m1 / max(bw, 1.0e-4);
             vec3 var = max(vec3(0.0), m2 / max(bw, 1.0e-4) - mean * mean);
-            vec3 sigma = sqrt(var) * 1.25;
+            // The 1.25-sigma box collapses in shadow: dark neighbourhoods
+            // have near-zero variance, so a CORRECT history lands outside a
+            // box a fraction of a percent wide and is clipped every frame --
+            // which the eye reads as shadows flickering with the jitter. An
+            // absolute floor widens dark boxes proportionally far more than
+            // bright ones, so the fix targets shadow almost exclusively.
+            // Y gets twice the chroma floor: flicker is luminance-first.
+            // The floor is LUMA-ADAPTIVE: a constant 0.006 was still too
+            // tight where the jittered 3x3 window slides across a hard
+            // shadow edge and the box CENTRE moves every frame, so shadows
+            // (mean.x near 0) get a ~2.3x wider box while midtones and
+            // highlights keep a tight one and stay crisp.
+            vec3 sigmaFloor = mix(vec3(0.014, 0.007, 0.007),
+                                  vec3(0.004, 0.002, 0.002),
+                                  smoothstep(0.0, 0.25, mean.x));
+            // Bright mirror: animated specular (sun glint on water, pack
+            // SSR sparkle) is LEGITIMATE frame-to-frame variation; widen
+            // slightly at high luma so it converges instead of popping
+            // against the clip box every frame.
+            sigmaFloor += vec3(0.006, 0.003, 0.003) * smoothstep(0.7, 1.0, mean.x);
+            vec3 sigma = sqrt(var) * 1.25 + sigmaFloor;
             vec3 lo = max(mean - sigma, boxMin);
             vec3 hi = min(mean + sigma, boxMax);
 
@@ -176,6 +260,10 @@ void main() {
             }
 
             float blend = HistoryBlend * sampleConfidence;
+            // Dark-region blend boost: accumulate harder exactly where the
+            // flicker lives. Shadows hold ~6% more history per frame; the
+            // 0.97 cap still bounds the memory, so nothing ghosts forever.
+            blend *= mix(1.06, 1.0, smoothstep(0.0, 0.2, mean.x));
             resolved = mix(current, history, clamp(blend, 0.0, 0.97));
         }
     }

@@ -47,9 +47,14 @@ public final class DSClientEvents {
         if (!(event.getScreen() instanceof VideoSettingsScreen screen)) {
             return;
         }
+        DSPreset[] cycleValues = DSConfig.dynamicEnabled()
+                ? DSPreset.values()
+                : java.util.Arrays.stream(DSPreset.values())
+                        .filter(preset -> preset != DSPreset.DYNAMIC)
+                        .toArray(DSPreset[]::new);
         event.addListener(CycleButton.<DSPreset>builder(
                         preset -> Component.literal(preset.label()))
-                .withValues(DSPreset.values())
+                .withValues(cycleValues)
                 .withInitialValue(DSConfig.preset())
                 .create(screen.width - 165, 6, 160, 20,
                         Component.literal("DLSS Style"),
@@ -74,6 +79,9 @@ public final class DSClientEvents {
         }
         DSPreset[] order = DSPreset.values();
         DSPreset next = order[(DSConfig.preset().ordinal() + 1) % order.length];
+        if (next == DSPreset.DYNAMIC && !DSConfig.dynamicEnabled()) {
+            next = order[(next.ordinal() + 1) % order.length];
+        }
         DSConfig.setPreset(next);
         minecraft.gui.getChat().addMessage(Component.literal("DLSS Style: ")
                 .append(Component.literal(next.label())

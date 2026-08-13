@@ -23,6 +23,7 @@ public final class DSConfig {
         final ForgeConfigSpec.EnumValue<DSPreset> preset;
         final ForgeConfigSpec.DoubleValue sharpness;
         final ForgeConfigSpec.IntValue dynamicTargetFps;
+        final ForgeConfigSpec.BooleanValue enableDynamic;
         final ForgeConfigSpec.BooleanValue jitter;
         final ForgeConfigSpec.BooleanValue menuBoost;
         final ForgeConfigSpec.BooleanValue beatSync;
@@ -51,6 +52,10 @@ public final class DSConfig {
                             "(your fps cap, or the monitor's refresh rate when",
                             "uncapped).")
                     .defineInRange("dynamicTargetFps", 0, 0, 240);
+            this.enableDynamic = builder
+                    .comment("Allow the DYNAMIC preset. Off: DYNAMIC is hidden from",
+                            "preset cycling and treated as DLAA if already selected.")
+                    .define("enableDynamic", true);
             this.jitter = builder
                     .comment("EXPERIMENTAL. Sub-pixel camera jitter - the DLSS",
                             "detail trick. Each frame samples slightly different",
@@ -98,6 +103,12 @@ public final class DSConfig {
                 return DSPreset.OFF;
             }
             presetCache = cached;
+        }
+        // The single guard for the DYNAMIC toggle: every consumer reads the
+        // preset through here, so a disabled DYNAMIC behaves as DLAA
+        // everywhere without touching the configured value.
+        if (cached == DSPreset.DYNAMIC && !dynamicEnabled()) {
+            return DSPreset.DLAA;
         }
         return cached;
     }
@@ -150,6 +161,15 @@ public final class DSConfig {
             return false;
         }
         return !screen.getClass().getSimpleName().contains("SodiumOptionsGUI");
+    }
+
+    /** Config not loaded reads as TRUE: DYNAMIC stays available by default. */
+    public static boolean dynamicEnabled() {
+        try {
+            return CLIENT.enableDynamic.get();
+        } catch (IllegalStateException e) {
+            return true;
+        }
     }
 
     public static boolean jitterEnabled() {

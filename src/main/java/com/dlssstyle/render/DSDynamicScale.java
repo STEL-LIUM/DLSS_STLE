@@ -10,7 +10,14 @@ import net.minecraft.client.Minecraft;
  *
  * <p>Asymmetric steps (down fast, up slow) with a dead band between the
  * thresholds, so the scale settles instead of see-sawing around the
- * target.
+ * target. On top of that, streak hysteresis: a step is only taken after
+ * the framerate has sat on the wrong side of its threshold for a run of
+ * CONSECUTIVE frames, so a single hitch (chunk build, GC, autosave) can
+ * never move the scale. Rapid scale oscillation is not merely cosmetic -
+ * every step invalidates the temporal history (visible re-convergence
+ * flicker) and resizes framebuffers (a load spike that itself dents fps,
+ * feeding the oscillation). Hysteresis on the scale CHOICE only: this
+ * class never sleeps, paces or times the frame loop.
  */
 final class DSDynamicScale {
     /** Same floor as the preset ladder - below 1/2 the image pays too much. */
@@ -28,6 +35,21 @@ final class DSDynamicScale {
     private static long lastFrameNanos;
     private static long lastAdjustNanos;
     private static double frameMsEma = -1.0;
+
+    // ── streak hysteresis ──
+    // Separate, asymmetric thresholds around the target with a dead band
+    // between them: below (target - 3) counts toward stepping DOWN, above
+    // (target + 8) counts toward stepping UP, anywhere between resets both
+    // counters. The wide upward margin exists because a step up costs real
+    // pixels and must not immediately push fps back under the shrink line.
+    // A step fires only once the per-frame fps has been past its threshold
+    // for STREAK_FRAMES consecutive frames - one frame inside the band
+    // starts the count over.
+    private static final int STREAK_FRAMES = 30;
+    private static final double DOWN_MARGIN_FPS = 3.0;
+    private static final double UP_MARGIN_FPS = 8.0;
+    private static int downStreak;
+    private static int upStreak;
 
     private DSDynamicScale() {
     }
@@ -86,44 +108,73 @@ final class DSDynamicScale {
         if (!minecraft.isWindowActive()) {
             lastFrameNanos = 0;
             frameMsEma = -1.0;
+            downStreak = 0;
+            upStreak = 0;
             return;
         }
         long now = System.nanoTime();
+        double frameMs = -1.0;
         if (lastFrameNanos != 0) {
             double ms = (now - lastFrameNanos) / 1_000_000.0;
             // A one-second frame is a world load or a freeze, not a signal.
             if (ms < 1000.0) {
                 frameMsEma = frameMsEma < 0 ? ms : frameMsEma * 0.97 + ms * 0.03;
+                frameMs = ms;
             }
         }
         lastFrameNanos = now;
 
-        if (frameMsEma <= 0 || now - lastAdjustNanos < ADJUST_EVERY_MS * 1_000_000L) {
+        if (frameMsEma <= 0) {
             return;
         }
-        lastAdjustNanos = now;
 
         int configured = com.dlssstyle.DSConfig.dynamicTargetFps();
         int limit = minecraft.options.framerateLimit().get();
         int targetFps = configured > 0 ? configured
                 : limit < 260 ? limit
                 : Math.max(30, minecraft.getWindow().getRefreshRate());
-        double fps = 1000.0 / frameMsEma;
+
+        // Streaks count EVERY frame; the 750ms cadence below only spaces the
+        // steps themselves. Consecutive is meant literally: one frame inside
+        // the dead band restarts the count, so only a sustained shortfall or
+        // sustained headroom ever moves the scale.
+        if (frameMs > 0) {
+            double frameFps = 1000.0 / frameMs;
+            if (frameFps < targetFps - DOWN_MARGIN_FPS) {
+                downStreak++;
+                upStreak = 0;
+            } else if (frameFps > targetFps + UP_MARGIN_FPS) {
+                upStreak++;
+                downStreak = 0;
+            } else {
+                downStreak = 0;
+                upStreak = 0;
+            }
+        }
+
+        if (now - lastAdjustNanos < ADJUST_EVERY_MS * 1_000_000L) {
+            return;
+        }
+        lastAdjustNanos = now;
 
         // Under a shader pack the discrete governor owns the scale.
         if (DSRenderScale.shaderPackActive()) {
-            packTick(minecraft, now, fps, targetFps);
+            packTick(minecraft, now, 1000.0 / frameMsEma, targetFps);
             return;
         }
 
-        // Wide dead band (96%..110%): the first live session hunted between
-        // 92% and 99% scale because ordinary fps noise crossed both of the
-        // old thresholds. Growth is also gated on a full-step margin so the
-        // step itself cannot push fps back under the shrink line.
-        if (fps < targetFps * 0.96) {
+        // Asymmetric steps behind the streak gate. Streaks reset after a
+        // step so the NEXT step needs its own full run of evidence - the
+        // step's own cost (history invalidation, framebuffer resize) lands
+        // in the frames right after it and must not be double-counted.
+        if (downStreak >= STREAK_FRAMES) {
             scale = Math.max(MIN_SCALE, scale - 0.05);
-        } else if (fps > targetFps * 1.10 && scale < MAX_SCALE) {
+            downStreak = 0;
+            upStreak = 0;
+        } else if (upStreak >= STREAK_FRAMES && scale < MAX_SCALE) {
             scale = Math.min(MAX_SCALE, scale + 0.03);
+            downStreak = 0;
+            upStreak = 0;
         }
     }
 
@@ -132,5 +183,7 @@ final class DSDynamicScale {
         lastFrameNanos = 0;
         lastAdjustNanos = 0;
         frameMsEma = -1.0;
+        downStreak = 0;
+        upStreak = 0;
     }
 }

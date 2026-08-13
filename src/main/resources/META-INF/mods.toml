@@ -6,6 +6,7 @@ license="MIT"
 modId="dlssstyle"
 version="1.0.0"
 displayName="DLSS Style"
+logoFile="logo.png"
 authors="Scallydragon"
 description='''
 DLSS-style temporal upscaling and anti-aliasing for Minecraft. DLAA by
