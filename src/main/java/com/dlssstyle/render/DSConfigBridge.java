@@ -8,7 +8,13 @@ package com.dlssstyle.render;
  * turns out to hate it.
  */
 public final class DSConfigBridge {
-    private static volatile boolean shadowCache = true;
+    // OFF as of 1.2.5, on Aryan's live call. v1 strobed Complementary's
+    // volumetric wash outright; v2 (snapshot/repaint, composite kept
+    // per-frame) fixed the static case but still steps visibly when the
+    // camera moves - each refresh jumps the frozen map/matrix pair by the
+    // accumulated motion. Shadow reuse doesn't ship again until it
+    // survives a moving-camera A/B on a volumetric pack.
+    private static volatile boolean shadowCache = false;
 
     private DSConfigBridge() {
     }

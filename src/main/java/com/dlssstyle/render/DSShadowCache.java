@@ -248,6 +248,17 @@ public final class DSShadowCache {
         framesRendered++;
     }
 
+    /**
+     * The mixin could not honour a skip (no valid snapshot yet, or the
+     * copy failed): this frame renders for real, and the matrix freeze
+     * must not apply to a frame that is drawing a fresh map.
+     */
+    public static void renderingInsteadOfSkipping() {
+        if (skipping) {
+            renderThisFrame();
+        }
+    }
+
     private static void reset() {
         skipping = false;
         consecutiveSkips = 0;
