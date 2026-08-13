@@ -57,25 +57,21 @@ public class MixinIrisPipelineCache {
     }
 
     /**
-     * The pack's "prepare" composite stage - atmospheric scattering and sky
-     * lookup tables on most packs. These depend on the SUN, not the camera,
-     * which makes them a better memoisation target than shadows: walking
-     * around does not invalidate them at all. Skipped on the same frames the
-     * shadow map is reused, so a pack that ties the two together stays
-     * consistent.
+     * WITHDRAWN 2026-08-12, field-audited: this used to skip the composite
+     * stage Iris runs inside renderShadows on the theory it held sun-driven
+     * sky/scattering LUTs. Reading the actual pack disproved it - on
+     * Complementary Reimagined r5.8.1 that stage is SHADOWCOMP, the
+     * FLOODFILL COLORED-LIGHTING compute (writeonly image3D floodfill_img,
+     * half-rate spreading that needs a pass EVERY frame to propagate).
+     * Skipping it on the sun-epsilon cadence froze light propagation for
+     * ~1.8s stretches and released it in visible steps - shading flicker in
+     * every colored-lit area. A stage whose contents we cannot identify
+     * per-pack must always run.
      */
     @Redirect(method = "renderShadows", remap = false,
             at = @At(value = "INVOKE",
                     target = "Lnet/irisshaders/iris/pipeline/CompositeRenderer;renderAll()V"))
     private void dlssstyle$skipPrepare(net.irisshaders.iris.pipeline.CompositeRenderer renderer) {
-        boolean skip;
-        try {
-            skip = DSShadowCache.skippingPrepare();
-        } catch (Throwable ignored) {
-            skip = false;
-        }
-        if (!skip) {
-            renderer.renderAll();
-        }
+        renderer.renderAll();
     }
 }

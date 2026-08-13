@@ -407,8 +407,14 @@ public final class DSRenderScale {
                 if (!dual) {
                     main.bindWrite(true);
                 }
+                // Under a pack the resolve must NOT sharpen: the pack applies
+                // its own IMAGE_SHARPENING at render scale (Complementary
+                // ships it at 5/10 by default), and a second sharpen on top -
+                // ours even BOOSTS with (1-scale) - amplifies the residue the
+                // pack's TAA leaves in every frame into full-frame shimmer
+                // (hh field report 2026-08-12, CR r5.8.1 at QUALITY).
                 shaded = DSUpscaleShader.draw(target, history, main.width, main.height,
-                        effectiveSharpness(), historyBlend(), temporal);
+                        temporal ? effectiveSharpness() : 0.0F, historyBlend(), temporal);
                 if (dual) {
                     unbindDual(main);
                 }

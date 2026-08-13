@@ -81,14 +81,19 @@ public final class DLSSStyle {
             if (body.contains("beatSync") && !body.contains("gsyncMode")) {
                 return;
             }
+            // beatSync=false: the spec says OPT-IN and the setting is
+            // currently inert (no consumer since the pacer was withdrawn),
+            // but this template was stamping TRUE into every fresh install -
+            // a booby trap for any future build that wires it back up.
             java.nio.file.Files.writeString(path, """
                     [upscale]
                     \tpreset = "DLAA"
                     \tsharpness = 0.35
                     \tdynamicTargetFps = 0
+                    \tenableDynamic = true
                     \tjitter = false
                     \tmenuBoost = false
-                    \tbeatSync = true
+                    \tbeatSync = false
                     \tdebugDump = true
                     """);
         } catch (Exception e) {
