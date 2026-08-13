@@ -123,6 +123,16 @@ public final class DLSSStyle {
         }
 
         @SubscribeEvent
+        public static void onClientSetup(
+                net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
+            // The pack doctor scans shaderpacks/ once per launch and writes
+            // "_fixed" siblings for packs whose custom-uniform expressions
+            // reference variables this shader mod build does not provide -
+            // the measured root cause of the 2026-08-12 full-scene strobing.
+            DSPackDoctor.run();
+        }
+
+        @SubscribeEvent
         public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent event) {
             // A resource reload rebuilds the block atlas; the mip LOD bias
             // lives on the atlas texture object and must be re-applied.

@@ -28,6 +28,8 @@ public final class DSConfig {
         final ForgeConfigSpec.BooleanValue menuBoost;
         final ForgeConfigSpec.BooleanValue beatSync;
         final ForgeConfigSpec.BooleanValue debugDump;
+        final ForgeConfigSpec.BooleanValue packDoctorEnabled;
+        final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> packDoctorMissingVars;
 
         Client(ForgeConfigSpec.Builder builder) {
             builder.comment("DLSS Style - DLSS-style temporal upscaling.",
@@ -85,6 +87,23 @@ public final class DSConfig {
                             "pipeline's buffers as PNGs (logs/buffers/) - the",
                             "debugging lever that found every bug in this mod.")
                     .define("debugDump", true);
+            this.packDoctorEnabled = builder
+                    .comment("Pack doctor: scan shader-pack zips for custom-uniform",
+                            "expressions that reference variables this shader mod",
+                            "build does not provide (the parser then feeds the pack",
+                            "garbage - measured as 2Hz full-scene strobing on",
+                            "Complementary Reimagined r5.8.1). Writes a '_fixed'",
+                            "sibling zip with only those lines pinned to 0; the",
+                            "original pack is never touched.")
+                    .define("packDoctorEnabled", true);
+            this.packDoctorMissingVars = builder
+                    .comment("Variables known to be missing from this shader mod",
+                            "build. Expression lines referencing any of these are",
+                            "neutralised in the '_fixed' copy. Extend this list when",
+                            "a pack update leans on a newer Iris variable.")
+                    .defineList("packDoctorMissingVars",
+                            java.util.List.of("endFlashIntensity", "BIOME_PALE_GARDEN"),
+                            entry -> entry instanceof String s && !s.isBlank());
             builder.pop();
         }
     }
@@ -238,6 +257,23 @@ public final class DSConfig {
             return CLIENT.debugDump.get();
         } catch (IllegalStateException e) {
             return false;
+        }
+    }
+
+    public static boolean packDoctorEnabled() {
+        try {
+            return CLIENT.packDoctorEnabled.get();
+        } catch (IllegalStateException e) {
+            return true;
+        }
+    }
+
+    /** Config not loaded reads as the shipped default set. */
+    public static java.util.List<String> packDoctorMissingVars() {
+        try {
+            return java.util.List.copyOf(CLIENT.packDoctorMissingVars.get());
+        } catch (IllegalStateException e) {
+            return java.util.List.of("endFlashIntensity", "BIOME_PALE_GARDEN");
         }
     }
 }

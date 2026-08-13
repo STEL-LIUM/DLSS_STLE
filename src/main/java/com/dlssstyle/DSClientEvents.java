@@ -24,6 +24,9 @@ public final class DSClientEvents {
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) {
+            // One line, a no-op after it fires once: the pack doctor's chat
+            // hint needs an in-game moment, and this event proves one.
+            DSPackDoctor.maybeAnnounce();
             // The temporal upscaler's reprojection needs this frame's
             // camera matrices; captured here where pose + projection are
             // both in hand. The pose carries ROTATION ONLY, so the camera
