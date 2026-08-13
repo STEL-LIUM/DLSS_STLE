@@ -83,6 +83,15 @@ public final class DSClientEvents {
 
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
+        // Tail of LevelRenderer.renderLevel: the whole world has written
+        // depth and vanilla's pre-hand depth clear has NOT happened yet -
+        // the only window in which world depth exists to snapshot. This
+        // replaces the withdrawn RenderSystem.clear redirect: Forge's own
+        // seam, nothing vanilla is displaced.
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+            DSRenderScale.snapshotWorldDepth();
+            return;
+        }
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) {
             // One line, a no-op after it fires once: the pack doctor's chat
             // hint needs an in-game moment, and this event proves one.
@@ -125,6 +134,58 @@ public final class DSClientEvents {
                 .create(screen.width - 165, 6, 160, 20,
                         Component.literal("DLSS Style"),
                         (button, preset) -> DSConfig.setPreset(preset)));
+    }
+
+    // ── camera sweep: the dev lever that makes reprojection falsifiable ──
+    // Input injection into GLFW is dead (raw input discards SendInput), so
+    // motion-quality testing needs the mod to move the camera itself. A
+    // CAMERA_SWEEP marker file in the game dir runs a fixed script: 3s
+    // strafe right, 3s strafe left, 2s yaw turn - repeatable enough to
+    // A/B temporal stability across builds. Same family as DUMP_BUFFERS:
+    // a file, not a keybind, so it works from outside while unattended.
+    // Gated behind debugDump, inert for anyone who never touches markers.
+    private static int sweepTicks = -1;
+
+    @SubscribeEvent
+    public static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            sweepTicks = -1;
+            return;
+        }
+        if (sweepTicks < 0) {
+            if (!DSConfig.debugDump()) {
+                return;
+            }
+            try {
+                java.nio.file.Path marker = java.nio.file.Path.of("CAMERA_SWEEP");
+                if (java.nio.file.Files.exists(marker)) {
+                    java.nio.file.Files.delete(marker);
+                    sweepTicks = 0;
+                    DLSSStyle.LOGGER.info("Camera sweep: start");
+                }
+            } catch (Exception ignored) {
+                // A locked marker just means no sweep this tick.
+            }
+            return;
+        }
+        boolean right = sweepTicks < 60;
+        boolean left = !right && sweepTicks < 120;
+        minecraft.options.keyRight.setDown(right);
+        minecraft.options.keyLeft.setDown(left);
+        if (!right && !left) {
+            if (sweepTicks < 160) {
+                minecraft.player.turn(6.0, 0.0);    // ~18 deg/s yaw
+            } else {
+                sweepTicks = -1;
+                DLSSStyle.LOGGER.info("Camera sweep: done");
+                return;
+            }
+        }
+        sweepTicks++;
     }
 
     /**

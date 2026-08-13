@@ -58,33 +58,12 @@ public class MixinGameRendererScale {
         DSRenderScale.disengageProxy();
     }
 
-    /**
-     * Captures world depth at the last instant it still exists.
-     *
-     * <p>Inside renderLevel, vanilla clears the depth buffer immediately
-     * before drawing the first-person hand (GameRenderer:1131 - the only
-     * RenderSystem.clear in the method). Our resolve runs after that, so
-     * the depth it read for reprojection was 1.0 everywhere: the temporal
-     * path had no depth input at all. Redirecting the clear lets us copy
-     * depth out first and then perform vanilla's clear unchanged.
-     */
-    // WITHDRAWN 2026-08-11: shipping this made the world invisible on
-    // Aryan's machine with no shader pack loaded. The mechanism is not yet
-    // understood - suspects are the mid-frame framebuffer creation and the
-    // read/draw rebind around the depth blit - so it goes back to the dev
-    // client with buffer dumps before it goes anywhere near a play session.
-    // With no snapshot, depth reads 1.0 everywhere, every pixel takes the
-    // far-plane path, and reprojection degrades to the previously-shipped
-    // rotation-only behaviour. Restore by re-enabling this redirect AND
-    // the body of DSRenderScale.snapshotWorldDepth().
-    //
-    // @Redirect(method = "renderLevel(FJLcom/mojang/blaze3d/vertex/PoseStack;)V",
-    //         at = @At(value = "INVOKE",
-    //                 target = "Lcom/mojang/blaze3d/systems/RenderSystem;clear(IZ)V"))
-    // private void dlssstyle$snapshotDepth(int mask, boolean onOsx) {
-    //     DSRenderScale.snapshotWorldDepth();
-    //     com.mojang.blaze3d.systems.RenderSystem.clear(mask, onOsx);
-    // }
+    // The depth snapshot's @Redirect on RenderSystem.clear lived here until
+    // it was withdrawn 2026-08-11 (world invisible, mechanism unproven).
+    // 1.2.3 brings the snapshot back WITHOUT the redirect: it now runs from
+    // RenderLevelStageEvent.AFTER_LEVEL (DSClientEvents), which also fires
+    // before vanilla's pre-hand depth clear but displaces nothing, and the
+    // buffer is pre-allocated in beginWorld so the pass only blits.
 
     /**
      * Sub-pixel jitter: nudges the projection by a fraction of a scaled

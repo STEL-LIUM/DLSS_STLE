@@ -87,7 +87,7 @@ public final class DLSSStyle {
                     \tsharpness = 0.35
                     \tdynamicTargetFps = 0
                     \tenableDynamic = true
-                    \tjitter = false
+                    \tdepthReprojection = true
                     \tmenuBoost = false
                     \tbeatSync = false
                     \tdebugDump = true

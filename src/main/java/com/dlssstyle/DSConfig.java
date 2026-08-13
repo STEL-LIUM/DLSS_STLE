@@ -24,7 +24,7 @@ public final class DSConfig {
         final ForgeConfigSpec.DoubleValue sharpness;
         final ForgeConfigSpec.IntValue dynamicTargetFps;
         final ForgeConfigSpec.BooleanValue enableDynamic;
-        final ForgeConfigSpec.BooleanValue jitter;
+        final ForgeConfigSpec.BooleanValue depthReprojection;
         final ForgeConfigSpec.BooleanValue menuBoost;
         final ForgeConfigSpec.BooleanValue beatSync;
         final ForgeConfigSpec.BooleanValue debugDump;
@@ -61,13 +61,17 @@ public final class DSConfig {
                     .comment("Allow the DYNAMIC preset. Off: DYNAMIC is hidden from",
                             "preset cycling and treated as DLAA if already selected.")
                     .define("enableDynamic", true);
-            this.jitter = builder
-                    .comment("EXPERIMENTAL. Sub-pixel camera jitter - the DLSS",
-                            "detail trick. Each frame samples slightly different",
-                            "points inside every pixel and the temporal blend",
-                            "integrates them into real detail. Off until it has",
-                            "passed a visual A/B - may shimmer or blur.")
-                    .define("jitter", false);
+            // The old "jitter" key is retired, not renamed: it was never
+            // consumed - jitter has always been on outside shader packs
+            // (it is the technique, not an option), and a knob that does
+            // nothing is worse than no knob.
+            this.depthReprojection = builder
+                    .comment("Reproject temporal history with real per-pixel world",
+                            "depth (snapshotted before vanilla clears the depth",
+                            "buffer for the hand). Off: rotation-only reprojection,",
+                            "the pre-1.2.3 behaviour - history mismatches while",
+                            "walking/strafing and detail resets to spatial there.")
+                    .define("depthReprojection", true);
             this.menuBoost = builder
                     .comment("EXPERIMENTAL. Halve the render scale while a menu or",
                             "inventory is open. Off by default: each open/close",
@@ -232,11 +236,12 @@ public final class DSConfig {
         }
     }
 
-    public static boolean jitterEnabled() {
+    /** Config not loaded reads as TRUE: the full temporal path is the product. */
+    public static boolean depthReprojection() {
         try {
-            return CLIENT.jitter.get();
+            return CLIENT.depthReprojection.get();
         } catch (IllegalStateException e) {
-            return false;
+            return true;
         }
     }
 

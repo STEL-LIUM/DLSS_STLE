@@ -288,6 +288,17 @@ public final class DSRenderScale {
                 logEngaged(width, height, main);
             }
 
+            // The depth snapshot's buffer lives OUTSIDE the world pass: the
+            // 08-11 withdrawal suspected mid-frame framebuffer creation, so
+            // the pass itself now only ever blits. Spatial resolves (shader
+            // packs) read no depth - do not hold one for them.
+            if (!shaderPackActive() && DSConfig.depthReprojection()) {
+                ensureDepthWorld();
+            } else if (depthWorld != null) {
+                depthWorld.destroyBuffers();
+                depthWorld = null;
+            }
+
             target.setClearColor(0.0F, 0.0F, 0.0F, 1.0F);
             target.clear(Minecraft.ON_OSX);
             target.bindWrite(true);
@@ -597,38 +608,54 @@ public final class DSRenderScale {
     // hand. The reprojection was therefore reading a blank buffer - the
     // temporal path has been structurally dead. Snapshot depth at the last
     // moment it is still the world's.
+    //
+    // 1.2.3 RESURRECTION of the 2026-08-11 withdrawal ("world invisible"),
+    // with both suspects removed rather than merely retried:
+    //  - the @Redirect on RenderSystem.clear is GONE. The snapshot now runs
+    //    from RenderLevelStageEvent.AFTER_LEVEL, which fires at the tail of
+    //    LevelRenderer.renderLevel - still before GameRenderer's hand
+    //    clear, but through Forge's own seam, replacing nothing.
+    //  - the mid-frame framebuffer creation is GONE: the buffer is
+    //    allocated/resized in beginWorld, so the render-pass path is only
+    //    a blit and a rebind, with the rebind in a finally.
     private static TextureTarget depthWorld;
     private static long snapshotFrame = -1;
     private static long frameCounter;
 
-    /** Disabled with its mixin - see MixinGameRendererScale for why. */
-    private static final boolean DEPTH_SNAPSHOT_ENABLED = false;
+    /** Allocated OUTSIDE the world pass; called from beginWorld. */
+    private static void ensureDepthWorld() {
+        if (depthWorld == null
+                || depthWorld.width != target.width
+                || depthWorld.height != target.height) {
+            if (depthWorld != null) {
+                depthWorld.destroyBuffers();
+            }
+            depthWorld = new TextureTarget(target.width, target.height, true,
+                    Minecraft.ON_OSX);
+        }
+    }
 
     public static void snapshotWorldDepth() {
-        if (!DEPTH_SNAPSHOT_ENABLED || !active || target == null) {
+        if (!active || target == null || depthWorld == null
+                || shaderPackActive() || !DSConfig.depthReprojection()) {
             return;
         }
         try {
-            if (depthWorld == null
-                    || depthWorld.width != target.width
-                    || depthWorld.height != target.height) {
-                if (depthWorld != null) {
-                    depthWorld.destroyBuffers();
-                }
-                depthWorld = new TextureTarget(target.width, target.height, true,
-                        Minecraft.ON_OSX);
-            }
             GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
             GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, depthWorld.frameBufferId);
             // NEAREST is mandatory: a depth blit may not filter.
             GL30.glBlitFramebuffer(0, 0, target.width, target.height,
                     0, 0, depthWorld.width, depthWorld.height,
                     GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
-            target.bindWrite(true);
             snapshotFrame = frameCounter;
         } catch (Throwable t) {
             // Reprojection degrades to rotation-only; never break the frame.
             snapshotFrame = -1;
+        } finally {
+            // Unconditionally: the world pass continues after this event,
+            // and a leaked READ/DRAW binding is exactly the kind of fault
+            // suspected in the 08-11 invisible-world withdrawal.
+            target.bindWrite(true);
         }
     }
 
