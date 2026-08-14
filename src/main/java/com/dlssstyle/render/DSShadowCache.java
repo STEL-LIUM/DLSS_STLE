@@ -79,6 +79,9 @@ public final class DSShadowCache {
     private static long cellX = Long.MIN_VALUE;
     private static long cellY;
     private static long cellZ;
+    private static Vec3 lastCamPos;
+    private static float lastCamYRot;
+    private static float lastCamXRot;
     private static float lastSunAngle = Float.NaN;
     private static String lastDimension = "";
 
@@ -181,7 +184,28 @@ public final class DSShadowCache {
             long cy = Math.floorDiv((long) Math.floor(pos.y), (long) CELL);
             long cz = Math.floorDiv((long) Math.floor(pos.z), (long) CELL);
 
-            boolean same = cx == cellX && cy == cellY && cz == cellZ
+            // THE MOTION GATE (1.2.7, field-reported: "when looking around
+            // and walking can see the ground flicker"). While the camera
+            // moves, fresh and reused shadow frames alternate at the
+            // refresh cadence and packs read the sub-block offset as ground
+            // shimmer - too subtle for burst metrics, obvious to eyes. So
+            // skipping is EARNED only by stillness: any translation or
+            // look-around renders shadows every frame, exactly stock, and
+            // the moment the camera settles the skips resume. Standing,
+            // building, menus and AFK - most of real play - still bank the
+            // ~78% pass savings.
+            float yRot = minecraft.gameRenderer.getMainCamera().getYRot();
+            float xRot = minecraft.gameRenderer.getMainCamera().getXRot();
+            boolean still = lastCamPos != null
+                    && pos.distanceToSqr(lastCamPos) < 1.0e-6
+                    && Math.abs(yRot - lastCamYRot) < 0.02F
+                    && Math.abs(xRot - lastCamXRot) < 0.02F;
+            lastCamPos = pos;
+            lastCamYRot = yRot;
+            lastCamXRot = xRot;
+
+            boolean same = still
+                    && cx == cellX && cy == cellY && cz == cellZ
                     && dimension.equals(lastDimension)
                     && !Float.isNaN(lastSunAngle)
                     && Math.abs(sun - lastSunAngle) < SUN_EPSILON
