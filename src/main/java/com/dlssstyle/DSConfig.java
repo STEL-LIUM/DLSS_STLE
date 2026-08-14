@@ -30,6 +30,7 @@ public final class DSConfig {
         final ForgeConfigSpec.BooleanValue debugDump;
         final ForgeConfigSpec.BooleanValue packDoctorEnabled;
         final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> packDoctorMissingVars;
+        final ForgeConfigSpec.DoubleValue shadowScale;
         final ForgeConfigSpec.BooleanValue packDoctorAuto;
         final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> packDoctorKnownVars;
 
@@ -111,6 +112,13 @@ public final class DSConfig {
                     .defineList("packDoctorMissingVars",
                             java.util.List.of("endFlashIntensity", "BIOME_PALE_GARDEN"),
                             entry -> entry instanceof String s && !s.isBlank());
+            this.shadowScale = builder
+                    .comment("Shader-pack shadow map resolution scale on the",
+                            "SCALING presets (Quality/Balanced/Performance/Ultra",
+                            "Perf). 0 = automatic (follows the preset: 0.75 /",
+                            "0.66 / 0.5 / 0.5), 1.0 = off (the pack's full",
+                            "resolution). DLAA and Off never scale shadows.")
+                    .defineInRange("shadowScale", 0.0, 0.0, 1.0);
             this.packDoctorAuto = builder
                     .comment("Pack doctor auto-discovery: instead of only the fixed",
                             "list above, parse every expression and flag ANY",
@@ -320,6 +328,15 @@ public final class DSConfig {
             return java.util.List.copyOf(CLIENT.packDoctorMissingVars.get());
         } catch (IllegalStateException e) {
             return java.util.List.of("endFlashIntensity", "BIOME_PALE_GARDEN");
+        }
+    }
+
+    /** 0 = auto (per preset); explicit value otherwise. */
+    public static double shadowScale() {
+        try {
+            return CLIENT.shadowScale.get();
+        } catch (IllegalStateException e) {
+            return 0.0;
         }
     }
 

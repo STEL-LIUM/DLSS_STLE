@@ -5,7 +5,8 @@
   "refmap": "dlssstyle.refmap.json",
   "minVersion": "0.8",
   "client": [
-    "MixinShadowRendererCache"
+    "MixinShadowRendererCache",
+    "MixinShadowResolution"
   ],
   "injectors": {
     "defaultRequire": 0
